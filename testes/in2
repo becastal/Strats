@@ -1,0 +1,9 @@
+8
+limit buy 10 100
+print
+limit sell 12 50
+print
+cancel 0
+print
+cancel 2
+print

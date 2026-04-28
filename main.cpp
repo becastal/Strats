@@ -5,24 +5,32 @@ class Ativo {
 public:
 	
 	void adicionaLimitBuy(int quantidade, double preco, int id) {
-		ordensCompras.emplace(pair<double, int>(-preco, id), quantidade); // negativo pra maior encima
+		auto [it, ok] = ordensCompras.emplace(pair<double, int>(-preco, id), quantidade); // negativo pra maior encima
+		indiceCompras[id] = it;
+
 		resolveFilaVendas();
 		resolveOrdens();
 	}
 
 	void adicionaLimitSell(int quantidade, double preco, int id) {
-		ordensVendas.emplace(pair<double, int>(preco, id), quantidade);
+		auto [it, ok] = ordensVendas.emplace(pair<double, int>(preco, id), quantidade);
+		indiceVendas[id] = it;
+
 		resolveFilaCompras();
 		resolveOrdens();
 	}
 
-	void adicionaMarketBuy(int quantidade) {
-		filaCompras.push(quantidade);
+	void adicionaMarketBuy(int id, int quantidade) {
+		filaCompras.push(id);
+		quantidadeFila[id] = quantidade;
+
 		resolveFilaCompras();
 	}
 
-	void adicionaMarketSell(int quantidade) {
-		filaVendas.push(quantidade);
+	void adicionaMarketSell(int id, int quantidade) {
+		filaVendas.push(id);
+		quantidadeFila[id] = quantidade;
+
 		resolveFilaVendas();
 	}
 
@@ -44,7 +52,7 @@ public:
 				double preco = -(*it_compra).first.first;
 
 				stringstream ss;
-				ss << quantidade << " @ " << fixed << setprecision(2) << preco;
+				ss << quantidade << " @ " << preco;
 
 				cout << left << setw(W) << ss.str();
 				it_compra = next(it_compra);
@@ -73,9 +81,27 @@ public:
 		cout << "+" << string(W + 2, '-') << "+" << string(W + 2, '-') << "+\n";
 	}
 
+	void cancelaOrdem(int id) {
+		auto it_compra = indiceCompras.find(id);
+		if (it_compra != indiceCompras.end()) {
+			removeCompra((*it_compra).second);
+			return;
+		}
+
+		auto it_venda = indiceVendas.find(id);
+		if (it_venda != indiceVendas.end()) {
+			removeVenda((*it_venda).second);
+			return;
+		}
+
+		quantidadeFila[id] = 0;
+	}
+
 private:
-	queue<int> filaCompras, filaVendas;
-	map<pair<double, int>, int> ordensCompras, ordensVendas;
+	queue<int> filaCompras, filaVendas; // [id da ordem market]
+	map<pair<double, int>, int> ordensCompras, ordensVendas; // [[preco, id], quantidade]
+	map<int, map<pair<double, int>, int>::iterator> indiceCompras, indiceVendas; // [id, iterador pra ordens*]
+	map<int, int> quantidadeFila; // [id, quantidade da ordem market]
 
 	void notificaTrade(double preco, int quantidade) {
 		cout << "Trade, price: " << preco << ", qty: " << quantidade << "\n";
@@ -93,10 +119,10 @@ private:
 			notificaTrade(-(*it_compra).first.first, tira);
 
 			if (((*it_compra).second -= tira) == 0) { 
-				ordensCompras.erase(it_compra);
+				removeCompra(it_compra);
 			}
 			if (((*it_venda).second -= tira) == 0) { 
-				ordensVendas.erase(it_venda);
+				removeVenda(it_venda);
 			}
 		}
 	}
@@ -105,14 +131,15 @@ private:
 		while (not filaCompras.empty()) {
 			if (ordensVendas.empty()) break;
 			
-			int& quant = filaCompras.front();
+			int id = filaCompras.front();
+			int& quant = quantidadeFila[id];
 			for (auto it = ordensVendas.begin(); it != ordensVendas.end() and quant > 0; ) {
 				int tira = min(quant, (*it).second);
 
 				notificaTrade((*it).first.first, tira);
 
 				if (((*it).second -= tira) == 0) {
-					it = ordensVendas.erase(it);
+					it = removeVenda(it);
 				}
 				if ((quant -= tira) == 0) {
 					break;
@@ -121,6 +148,7 @@ private:
 
 			if (quant == 0) {
 				filaCompras.pop();
+				quantidadeFila.erase(id);
 			}
 		}
 	}
@@ -129,14 +157,15 @@ private:
 		while (not filaVendas.empty()) {
 			if (ordensCompras.empty()) break;
 			
-			int& quant = filaVendas.front();
+			int id = filaVendas.front();
+			int& quant = quantidadeFila[id];
 			for (auto it = ordensCompras.begin(); it != ordensCompras.end() and quant > 0; ) {
 				int tira = min(quant, (*it).second);
 
 				notificaTrade(-(*it).first.first, tira);
 
 				if (((*it).second -= tira) == 0) {
-					it = ordensCompras.erase(it);
+					it = removeCompra(it);
 				}
 				if ((quant -= tira) == 0) {
 					break;
@@ -145,8 +174,21 @@ private:
 
 			if (quant == 0) {
 				filaVendas.pop();
+				quantidadeFila.erase(id);
 			}
 		}
+	}
+
+	map<pair<double, int>, int>::iterator removeCompra(map<pair<double, int>, int>::iterator it) {
+		int id = (*it).first.second;
+		indiceCompras.erase(id);
+		return ordensCompras.erase(it);
+	}
+
+	map<pair<double, int>, int>::iterator removeVenda(map<pair<double, int>, int>::iterator it) {
+		int id = (*it).first.second;
+		indiceVendas.erase(id);
+		return ordensVendas.erase(it);
 	}
 };
 
@@ -156,11 +198,18 @@ int main() {
 	Ativo gestor;
 
 	for (int id = 0; id < queries; id++) {
-		string tipo, lado; cin >> tipo >> lado;
+		string tipo; cin >> tipo;
 
-		if (tipo == "print" and lado == "book") {
+		if (tipo == "print") {
 			gestor.imprimeLivro();
+		} else if (tipo == "cancel") {
+			int id_ordem; cin >> id_ordem;
+
+			cout << ">>> cancel " << id_ordem << "\n";
+			gestor.cancelaOrdem(id_ordem);
+
 		} else if (tipo == "limit") {
+			string lado; cin >> lado;
 			double preco; cin >> preco;
 			int quantidade; cin >> quantidade;
 
@@ -172,14 +221,15 @@ int main() {
 				gestor.adicionaLimitSell(quantidade, preco, id);
 			} else assert(0);
 		} else if (tipo == "market") {
+			string lado; cin >> lado;
 			int quantidade; cin >> quantidade;
 
 			cout << ">>> " << tipo << ' ' << lado << ' ' << quantidade << '\n';
 
 			if (lado == "buy") {
-				gestor.adicionaMarketBuy(quantidade);
+				gestor.adicionaMarketBuy(id, quantidade);
 			} else if (lado == "sell") {
-				gestor.adicionaMarketSell(quantidade);
+				gestor.adicionaMarketSell(id, quantidade);
 			} else assert(0);
 		} else assert(0);
 	}
