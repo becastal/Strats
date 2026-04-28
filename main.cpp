@@ -26,6 +26,53 @@ public:
 		resolveFilaVendas();
 	}
 
+	void imprimeLivro() {
+		int W = 40;
+
+		cout << "+" << string(W + 2, '-') << "+" << string(W + 2, '-') << "+\n";
+		cout << "| " << left << setw(W) << "Ordens de Compra" << " | " << left << setw(W) << "Ordens de Venda" << " |\n"; 
+		cout << "+" << string(W + 2, '-') << "+" << string(W + 2, '-') << "+\n";
+
+		auto it_compra = ordensCompras.begin();
+		auto it_venda = ordensVendas.begin();
+
+		while (it_compra != ordensCompras.end() or it_venda != ordensVendas.end()) {
+			cout << "| ";
+
+			if (it_compra != ordensCompras.end()) {
+				int quantidade = (*it_compra).second;
+				double preco = -(*it_compra).first.first;
+
+				stringstream ss;
+				ss << quantidade << " @ " << fixed << setprecision(2) << preco;
+
+				cout << left << setw(W) << ss.str();
+				it_compra = next(it_compra);
+			} else {
+				cout << left << setw(W) << "";
+			}
+
+			cout << " | ";
+
+			if (it_venda != ordensVendas.end()) {
+				int quantidade = (*it_venda).second;
+				double preco = (*it_venda).first.first;
+
+				stringstream ss;
+				ss << quantidade << " @ " << fixed << setprecision(2) << preco;
+
+				cout << left << setw(W) << ss.str();
+
+				it_venda = next(it_venda);
+			} else {
+				cout << left << setw(W) << "";
+			}
+
+			cout << " |\n";
+		}
+		cout << "+" << string(W + 2, '-') << "+" << string(W + 2, '-') << "+\n";
+	}
+
 private:
 	queue<int> filaCompras, filaVendas;
 	map<pair<double, int>, int> ordensCompras, ordensVendas;
@@ -103,7 +150,6 @@ private:
 	}
 };
 
-
 int main() {
 	int queries; cin >> queries;
 
@@ -112,8 +158,9 @@ int main() {
 	for (int id = 0; id < queries; id++) {
 		string tipo, lado; cin >> tipo >> lado;
 
-
-		if (tipo == "limit") {
+		if (tipo == "print" and lado == "book") {
+			gestor.imprimeLivro();
+		} else if (tipo == "limit") {
 			double preco; cin >> preco;
 			int quantidade; cin >> quantidade;
 

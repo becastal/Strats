@@ -1,7 +1,8 @@
-6
+7
 limit buy 10 100
 limit sell 20 100
 limit sell 20 200
 market buy 150
+print book
 market buy 200
 market sell 200
