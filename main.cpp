@@ -1,17 +1,40 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-	int queries; cin >> queries;
+class Ativo {
+public:
+	
+	void adicionaLimitBuy(int quantidade, double preco, int id) {
+		ordensCompras.emplace(pair<double, int>(-preco, id), quantidade); // negativo pra maior encima
+		resolveFilaVendas();
+		resolveOrdens();
+	}
 
+	void adicionaLimitSell(int quantidade, double preco, int id) {
+		ordensVendas.emplace(pair<double, int>(preco, id), quantidade);
+		resolveFilaCompras();
+		resolveOrdens();
+	}
+
+	void adicionaMarketBuy(int quantidade) {
+		filaCompras.push(quantidade);
+		resolveFilaCompras();
+	}
+
+	void adicionaMarketSell(int quantidade) {
+		filaVendas.push(quantidade);
+		resolveFilaVendas();
+	}
+
+private:
 	queue<int> filaCompras, filaVendas;
-	map<pair<double, int>, int> ordensCompras, ordensVendas; // (valor {ou -valor}, id), quantidade
+	map<pair<double, int>, int> ordensCompras, ordensVendas;
 
-	auto notificaTrade = [&](double price, int quant) {
-		cout << "Trade, price: " << price << ", qty: " << quant << "\n";
-	};
+	void notificaTrade(double preco, int quantidade) {
+		cout << "Trade, price: " << preco << ", qty: " << quantidade << "\n";
+	}
 
-	auto resolveOrdens = [&]() {
+	void resolveOrdens() {
 		while (not ordensVendas.empty() and not ordensCompras.empty()) {
 			auto it_compra = ordensCompras.begin();
 			auto it_venda = ordensVendas.begin();
@@ -29,14 +52,14 @@ int main() {
 				ordensVendas.erase(it_venda);
 			}
 		}
-	};
+	}
 
-	auto resolveFilaCompras = [&]() {
+	void resolveFilaCompras() {
 		while (not filaCompras.empty()) {
 			if (ordensVendas.empty()) break;
 			
 			int& quant = filaCompras.front();
-			for (auto it = ordensVendas.begin(); it != ordensVendas.end(); ) {
+			for (auto it = ordensVendas.begin(); it != ordensVendas.end() and quant > 0; ) {
 				int tira = min(quant, (*it).second);
 
 				notificaTrade((*it).first.first, tira);
@@ -53,14 +76,14 @@ int main() {
 				filaCompras.pop();
 			}
 		}
-	};
+	}
 
-	auto resolveFilaVendas = [&]() {
+	void resolveFilaVendas() {
 		while (not filaVendas.empty()) {
 			if (ordensCompras.empty()) break;
 			
 			int& quant = filaVendas.front();
-			for (auto it = ordensCompras.begin(); it != ordensCompras.end(); ) {
+			for (auto it = ordensCompras.begin(); it != ordensCompras.end() and quant > 0; ) {
 				int tira = min(quant, (*it).second);
 
 				notificaTrade(-(*it).first.first, tira);
@@ -77,7 +100,14 @@ int main() {
 				filaVendas.pop();
 			}
 		}
-	};
+	}
+};
+
+
+int main() {
+	int queries; cin >> queries;
+
+	Ativo gestor;
 
 	for (int id = 0; id < queries; id++) {
 		string tipo, lado; cin >> tipo >> lado;
@@ -90,13 +120,9 @@ int main() {
 			cout << ">>> " << tipo << ' ' << lado << ' ' << preco << ' '<< quantidade << '\n';
 
 			if (lado == "buy") {
-				ordensCompras.emplace(pair<double, int>(-preco, id), quantidade); // negativo pra maior encima
-				resolveFilaVendas();
-				resolveOrdens();
+				gestor.adicionaLimitBuy(quantidade, preco, id);
 			} else if (lado == "sell") {
-				ordensVendas.emplace(pair<double, int>(preco, id), quantidade);
-				resolveFilaCompras();
-				resolveOrdens();
+				gestor.adicionaLimitSell(quantidade, preco, id);
 			} else assert(0);
 		} else if (tipo == "market") {
 			int quantidade; cin >> quantidade;
@@ -104,11 +130,9 @@ int main() {
 			cout << ">>> " << tipo << ' ' << lado << ' ' << quantidade << '\n';
 
 			if (lado == "buy") {
-				filaCompras.push(quantidade);
-				resolveFilaCompras();
+				gestor.adicionaMarketBuy(quantidade);
 			} else if (lado == "sell") {
-				filaVendas.push(quantidade);
-				resolveFilaVendas();
+				gestor.adicionaMarketSell(quantidade);
 			} else assert(0);
 		} else assert(0);
 	}
