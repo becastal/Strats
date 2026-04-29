@@ -1,0 +1,7 @@
+6
+limit buy 10 200
+limit buy 9.99 100
+limit sell 10.5 100
+print
+change limit 0 9.98 200
+print

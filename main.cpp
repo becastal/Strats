@@ -4,7 +4,7 @@ using namespace std;
 class Ativo {
 public:
 	
-	void adicionaLimitBuy(int quantidade, double preco, int id) {
+	void adicionaLimitBuy(int id, int quantidade, double preco) {
 		auto [it, ok] = ordensCompras.emplace(pair<double, int>(-preco, id), quantidade); // negativo pra maior encima
 		indiceCompras[id] = it;
 
@@ -12,7 +12,7 @@ public:
 		resolveOrdens();
 	}
 
-	void adicionaLimitSell(int quantidade, double preco, int id) {
+	void adicionaLimitSell(int id, int quantidade, double preco) {
 		auto [it, ok] = ordensVendas.emplace(pair<double, int>(preco, id), quantidade);
 		indiceVendas[id] = it;
 
@@ -84,7 +84,7 @@ public:
 	void cancelaOrdem(int id) {
 		auto it_compra = indiceCompras.find(id);
 		if (it_compra != indiceCompras.end()) {
-			removeCompra((*it_compra).second);
+			removeCompra((*it_conot mpra).second);
 			return;
 		}
 
@@ -94,7 +94,26 @@ public:
 			return;
 		}
 
-		quantidadeFila[id] = 0;
+		if (quantidadeFila.count(id)) {
+			quantidadeFila[id] = 0;
+		}
+	}
+
+	void alteraOrdemMarket(int id, int novaQuantidade) {
+		if (not quantidadeFila.count(id) or quantidadeFila[id] == 0) return;
+		quantidadeFila[id] = novaQuantidade;	
+	}
+
+	void alteraOrdemLimit(int id, int novaQuantidade, double novoPreco) {
+		bool ehCompra = indiceCompras.count(id), ehVenda = indiceVendas.count(id);
+		if (not ehCompra and not ehVenda) return;
+
+		cancelaOrdem(id);
+		if (ehCompra) {
+			adicionaLimitBuy(id, novaQuantidade, novoPreco);		
+		} else {
+			adicionaLimitSell(id, novaQuantidade, novoPreco);		
+		}
 	}
 
 private:
@@ -203,28 +222,45 @@ int main() {
 		if (tipo == "print") {
 			gestor.imprimeLivro();
 		} else if (tipo == "cancel") {
-			int id_ordem; cin >> id_ordem;
+			int idOrdem; cin >> idOrdem;
 
-			cout << ">>> cancel " << id_ordem << "\n";
-			gestor.cancelaOrdem(id_ordem);
+			cout << ">>> cancel id: " << idOrdem << "\n";
+			gestor.cancelaOrdem(idOrdem);
 
+		} else if (tipo == "change") {
+			string qual; cin >> qual;
+
+			if (qual == "limit") {
+				int idOrdem; cin >> idOrdem;
+				double novoPreco; cin >> novoPreco;
+				int novaQuantidade; cin >> novaQuantidade;
+
+				cout << ">>> change limit id: " << idOrdem << ", new price: " << novoPreco << ", newQty: " << novaQuantidade << "\n";
+
+				gestor.alteraOrdemLimit(idOrdem, novaQuantidade, novoPreco);
+			} else if (qual == "market") {
+				int idOrdem; cin >> idOrdem;
+				int novaQuantidade; cin >> novaQuantidade;
+
+				gestor.alteraOrdemMarket(idOrdem, novaQuantidade);
+			}
 		} else if (tipo == "limit") {
 			string lado; cin >> lado;
 			double preco; cin >> preco;
 			int quantidade; cin >> quantidade;
 
-			cout << ">>> " << tipo << ' ' << lado << ' ' << preco << ' '<< quantidade << '\n';
+			cout << ">>> new limit " << lado << " order price: " << preco << ", qty: "<< quantidade << '\n';
 
 			if (lado == "buy") {
-				gestor.adicionaLimitBuy(quantidade, preco, id);
+				gestor.adicionaLimitBuy(id, quantidade, preco);
 			} else if (lado == "sell") {
-				gestor.adicionaLimitSell(quantidade, preco, id);
+				gestor.adicionaLimitSell(id, quantidade, preco);
 			} else assert(0);
 		} else if (tipo == "market") {
 			string lado; cin >> lado;
 			int quantidade; cin >> quantidade;
 
-			cout << ">>> " << tipo << ' ' << lado << ' ' << quantidade << '\n';
+			cout << ">>> new market " << lado << " order qty: "<< quantidade << '\n';
 
 			if (lado == "buy") {
 				gestor.adicionaMarketBuy(id, quantidade);
