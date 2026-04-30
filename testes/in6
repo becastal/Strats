@@ -1,0 +1,21 @@
+20
+peg bid buy 50
+print
+limit buy 10 100
+print
+market sell 70
+print
+limit buy 10.1 30
+print
+peg offer sell 40
+print
+limit offer sell 10.4 60
+print
+peg offer buy 50
+print
+peg bid sell 40
+print
+peg bid buy 25
+print
+cancel 16
+print
